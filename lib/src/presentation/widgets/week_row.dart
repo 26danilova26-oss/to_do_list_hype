@@ -1,95 +1,44 @@
 import 'package:flutter/material.dart';
-import '../../entity/week.dart';
+import '../entity/week.dart';
+import '../model/week_calculator.dart';
 
-class WeekRow extends StatelessWidget {
-  final Week week;
-  final DateTime selectedDate;
-  final ValueChanged<DateTime> onDaySelected;
+class WeekController extends ChangeNotifier {
+  final WeekCalculator _calculator = WeekCalculator();
 
-  const WeekRow({
-    super.key,
-    required this.week,
-    required this.selectedDate,
-    required this.onDaySelected,
-  });
+  // Индекс смещения: 0 = текущая неделя, -1 = прошлая, +1 = следующая
+  int _weekOffset = 0;
+  Week _baseWeek; // реальная текущая неделя
 
-  static const List<String> shortDayLabels = [
-    'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'
-  ];
+  WeekController() : _baseWeek = WeekCalculator().getCurrentWeek();
 
-  String _getDayLabel(DateTime date) {
-    final today = DateTime.now();
-    if (date.year == today.year &&
-        date.month == today.month &&
-        date.day == today.day) {
-      return 'сегодня';
-    }
-    return shortDayLabels[date.weekday - 1];
+  int get weekOffset => _weekOffset;
+
+  Week get currentWeek {
+    if (_weekOffset == 0) return _baseWeek;
+    return Week(_baseWeek.startMonday.add(Duration(days: 7 * _weekOffset)));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final todayWeekday = today.weekday;
+  void setWeekOffset(int offset) {
+    if (_weekOffset != offset) {
+      _weekOffset = offset;
+      notifyListeners();
+    }
+  }
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(7, (index) {
-        final date = week.days[index];
-        final isToday = date.year == today.year &&
-            date.month == today.month &&
-            date.day == today.day;
-        final label = _getDayLabel(date);
-        final isSameWeekday = date.weekday == todayWeekday;
+  void previousWeek() {
+    _weekOffset--;
+    notifyListeners();
+  }
 
-        Color? circleColor;
-        if (isSameWeekday) {
-          circleColor = isToday ? Colors.grey : Colors.white;
-        }
+  void nextWeek() {
+    _weekOffset++;
+    notifyListeners();
+  }
 
-        return GestureDetector(
-          onTap: () => onDaySelected(date),
-          child: SizedBox(
-            width: 44,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 10,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: circleColor != null
-                      ? BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: circleColor,
-                    border: circleColor == Colors.white
-                        ? Border.all(color: Colors.grey.shade300)
-                        : null,
-                  )
-                      : null,
-                  child: Center(
-                    child: Text(
-                      '${date.day}',
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.normal,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }),
-    );
+  // Сброс к текущей неделе (если нужно)
+  void resetToCurrent() {
+    _baseWeek = _calculator.getCurrentWeek();
+    _weekOffset = 0;
+    notifyListeners();
   }
 }
